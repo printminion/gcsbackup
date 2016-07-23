@@ -210,20 +210,18 @@ def download(argv):
 
 
 if __name__ == '__main__':
+
     if len(sys.argv) < 3:
         print 'Too few arguments.'
         print USAGE
+        sys.exit(9)
 
-    try:
-        if sys.argv[2].startswith('gs://'):
-            upload(sys.argv)
-            sys.exit(0)
-        elif sys.argv[1].startswith('gs://'):
-            download(sys.argv)
-            sys.exit(0)
-        else:
-            print USAGE
-            sys.exit(9)
-    except:
-        print "Error"
+    if sys.argv[2].startswith('gs://'):
+        upload(sys.argv)
+        sys.exit(0)
+    elif sys.argv[1].startswith('gs://'):
+        download(sys.argv)
+        sys.exit(0)
+    else:
+        print USAGE
         sys.exit(9)

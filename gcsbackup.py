@@ -29,7 +29,6 @@ from oauth2client.client import flow_from_clientsecrets
 from oauth2client.file import Storage as CredentialStorage
 from oauth2client.tools import run_flow as run_oauth2
 
-
 # CLIENT_SECRETS_FILE, name of a file containing the OAuth 2.0 information for
 # this application, including client_id and client_secret. You can acquire an
 # ID/secret pair from the API Access tab on the Google APIs Console
@@ -81,141 +80,150 @@ DEFAULT_MIMETYPE = 'application/octet-stream'
 
 
 def get_authenticated_service_old(scope):
-  print 'Authenticating...'
-  flow = flow_from_clientsecrets(CLIENT_SECRETS_FILE, scope=scope,
-                                 message=MISSING_CLIENT_SECRETS_MESSAGE)
+    print 'Authenticating...'
+    flow = flow_from_clientsecrets(CLIENT_SECRETS_FILE, scope=scope,
+                                   message=MISSING_CLIENT_SECRETS_MESSAGE)
 
-  credential_storage = CredentialStorage(CREDENTIALS_FILE)
-  credentials = credential_storage.get()
-  if credentials is None or credentials.invalid:
-    credentials = run_oauth2(flow, credential_storage)
+    credential_storage = CredentialStorage(CREDENTIALS_FILE)
+    credentials = credential_storage.get()
+    if credentials is None or credentials.invalid:
+        credentials = run_oauth2(flow, credential_storage)
 
-  print 'Constructing Google Cloud Storage service...'
-  http = credentials.authorize(httplib2.Http())
-  return discovery_build('storage', 'v1', http=http)
+    print 'Constructing Google Cloud Storage service...'
+    http = credentials.authorize(httplib2.Http())
+    return discovery_build('storage', 'v1', http=http)
+
 
 def get_authenticated_service(scope):
-  print 'Authenticating...'
+    print 'Authenticating...'
 
-  http = auth.Auth.create_service(
-      scope
-      , CREDENTIALS_FILE
-      , CLIENT_SECRETS_FILE
-  )
+    http = auth.Auth.create_service(
+        scope
+        , CREDENTIALS_FILE
+        , CLIENT_SECRETS_FILE
+    )
 
-  print 'Constructing Google Cloud Storage service...'
-  return build('storage', 'v1', http=http)
+    print 'Constructing Google Cloud Storage service...'
+    return build('storage', 'v1', http=http)
+
 
 def handle_progressless_iter(error, progressless_iters):
-  if progressless_iters > NUM_RETRIES:
-    print 'Failed to make progress for too many consecutive iterations.'
-    raise error
+    if progressless_iters > NUM_RETRIES:
+        print 'Failed to make progress for too many consecutive iterations.'
+        raise error
 
-  sleeptime = random.random() * (2**progressless_iters)
-  print ('Caught exception (%s). Sleeping for %s seconds before retry #%d.'
-         % (str(error), sleeptime, progressless_iters))
-  time.sleep(sleeptime)
+    sleeptime = random.random() * (2 ** progressless_iters)
+    print ('Caught exception (%s). Sleeping for %s seconds before retry #%d.'
+           % (str(error), sleeptime, progressless_iters))
+    time.sleep(sleeptime)
 
 
 def print_with_carriage_return(s):
-  sys.stdout.write('\r' + s)
-  sys.stdout.flush()
+    sys.stdout.write('\r' + s)
+    sys.stdout.flush()
 
 
 def upload(argv):
-  filename = argv[1]
-  bucket_name, object_name = argv[2][5:].split('/', 1)
-  assert bucket_name and object_name
+    filename = argv[1]
+    bucket_name, object_name = argv[2][5:].split('/', 1)
+    assert bucket_name and object_name
 
-  service = get_authenticated_service(RW_SCOPE)
+    service = get_authenticated_service(RW_SCOPE)
 
-  print 'Building upload request...'
-  media = MediaFileUpload(filename, chunksize=CHUNKSIZE, resumable=True)
-  if not media.mimetype():
-    media = MediaFileUpload(filename, DEFAULT_MIMETYPE, resumable=True)
-  request = service.objects().insert(bucket=bucket_name, name=object_name,
-                                     media_body=media)
+    print 'Building upload request...'
+    media = MediaFileUpload(filename, chunksize=CHUNKSIZE, resumable=True)
+    if not media.mimetype():
+        media = MediaFileUpload(filename, DEFAULT_MIMETYPE, resumable=True)
+    request = service.objects().insert(bucket=bucket_name, name=object_name,
+                                       media_body=media)
 
-  print 'Uploading file: %s to bucket: %s object: %s ' % (filename, bucket_name,
-                                                          object_name)
+    print 'Uploading file: %s to bucket: %s object: %s ' % (filename, bucket_name,
+                                                            object_name)
 
-  progressless_iters = 0
-  response = None
-  while response is None:
-    error = None
-    try:
-      progress, response = request.next_chunk()
-      if progress:
-        print_with_carriage_return('Upload %d%%' % (100 * progress.progress()))
-    except HttpError, err:
-      error = err
-      if err.resp.status < 500:
-        raise
-    except RETRYABLE_ERRORS, err:
-      error = err
+    progressless_iters = 0
+    response = None
+    while response is None:
+        error = None
+        try:
+            progress, response = request.next_chunk()
+            if progress:
+                print_with_carriage_return('Upload %d%%' % (100 * progress.progress()))
+        except HttpError, err:
+            error = err
+            if err.resp.status < 500:
+                raise
+        except RETRYABLE_ERRORS, err:
+            error = err
 
-    if error:
-      progressless_iters += 1
-      handle_progressless_iter(error, progressless_iters)
-    else:
-      progressless_iters = 0
+        if error:
+            progressless_iters += 1
+            handle_progressless_iter(error, progressless_iters)
+        else:
+            progressless_iters = 0
 
-  print '\nUpload complete!'
+    print '\nUpload complete!'
 
-  print 'Uploaded Object:'
-  print json_dumps(response, indent=2)
+    print 'Uploaded Object:'
+    print json_dumps(response, indent=2)
 
 
 def download(argv):
-  bucket_name, object_name = argv[1][5:].split('/', 1)
-  filename = argv[2]
-  assert bucket_name and object_name
+    bucket_name, object_name = argv[1][5:].split('/', 1)
+    filename = argv[2]
+    assert bucket_name and object_name
 
-  service = get_authenticated_service(RO_SCOPE)
+    service = get_authenticated_service(RO_SCOPE)
 
-  print 'Building download request...'
-  f = file(filename, 'w')
-  request = service.objects().get_media(bucket=bucket_name,
-                                        object=object_name)
-  media = MediaIoBaseDownload(f, request, chunksize=CHUNKSIZE)
+    print 'Building download request...'
+    f = file(filename, 'w')
+    request = service.objects().get_media(bucket=bucket_name,
+                                          object=object_name)
+    media = MediaIoBaseDownload(f, request, chunksize=CHUNKSIZE)
 
-  print 'Downloading bucket: %s object: %s to file: %s' % (bucket_name,
-                                                           object_name,
-                                                           filename)
+    print 'Downloading bucket: %s object: %s to file: %s' % (bucket_name,
+                                                             object_name,
+                                                             filename)
 
-  progressless_iters = 0
-  done = False
-  while not done:
-    error = None
-    try:
-      progress, done = media.next_chunk()
-      if progress:
-        print_with_carriage_return(
-            'Download %d%%.' % int(progress.progress() * 100))
-    except HttpError, err:
-      error = err
-      if err.resp.status < 500:
-        raise
-    except RETRYABLE_ERRORS, err:
-      error = err
+    progressless_iters = 0
+    done = False
+    while not done:
+        error = None
+        try:
+            progress, done = media.next_chunk()
+            if progress:
+                print_with_carriage_return(
+                    'Download %d%%.' % int(progress.progress() * 100))
+        except HttpError, err:
+            error = err
+            if err.resp.status < 500:
+                raise
+        except RETRYABLE_ERRORS, err:
+            error = err
 
-    if error:
-      progressless_iters += 1
-      handle_progressless_iter(error, progressless_iters)
-    else:
-      progressless_iters = 0
+        if error:
+            progressless_iters += 1
+            handle_progressless_iter(error, progressless_iters)
+        else:
+            progressless_iters = 0
 
-  print '\nDownload complete!'
+    print '\nDownload complete!'
 
 
 if __name__ == '__main__':
-  if len(sys.argv) < 3:
-    print 'Too few arguments.'
-    print USAGE
-  if sys.argv[2].startswith('gs://'):
-    upload(sys.argv)
-  elif sys.argv[1].startswith('gs://'):
-    download(sys.argv)
-  else:
-    print USAGE
+    if len(sys.argv) < 3:
+        print 'Too few arguments.'
+        print USAGE
 
+    try:
+        if sys.argv[2].startswith('gs://'):
+            upload(sys.argv)
+            sys.exit(0)
+        elif sys.argv[1].startswith('gs://'):
+            download(sys.argv)
+            sys.exit(0)
+        else:
+            print USAGE
+            sys.exit(9)
+    except:
+        print "Error"
+        sys.exit(9)

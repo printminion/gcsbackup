@@ -1,2 +1,3 @@
 gcloud
 apiclient
+google-api-python-client==1.5.2

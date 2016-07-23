@@ -17,6 +17,8 @@ import os
 import random
 import sys
 import time
+from gapps import auth
+from googleapiclient.discovery import build
 
 from apiclient.discovery import build as discovery_build
 from apiclient.errors import HttpError
@@ -78,7 +80,7 @@ CHUNKSIZE = 2 * 1024 * 1024
 DEFAULT_MIMETYPE = 'application/octet-stream'
 
 
-def get_authenticated_service(scope):
+def get_authenticated_service_old(scope):
   print 'Authenticating...'
   flow = flow_from_clientsecrets(CLIENT_SECRETS_FILE, scope=scope,
                                  message=MISSING_CLIENT_SECRETS_MESSAGE)
@@ -92,6 +94,17 @@ def get_authenticated_service(scope):
   http = credentials.authorize(httplib2.Http())
   return discovery_build('storage', 'v1', http=http)
 
+def get_authenticated_service(scope):
+  print 'Authenticating...'
+
+  http = auth.Auth.create_service(
+      scope
+      , CREDENTIALS_FILE
+      , CLIENT_SECRETS_FILE
+  )
+
+  print 'Constructing Google Cloud Storage service...'
+  return build('storage', 'v1', http=http)
 
 def handle_progressless_iter(error, progressless_iters):
   if progressless_iters > NUM_RETRIES:

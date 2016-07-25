@@ -167,6 +167,49 @@ def upload(argv):
     print json_dumps(response, indent=2)
 
 
+def copy(argv):
+    sourceBucket, sourceObject = argv[1][5:].split('/', 1)
+    destinationBucket, destinationObject = argv[2][5:].split('/', 1)
+    assert sourceBucket and sourceObject
+    assert destinationBucket and destinationObject
+
+    service = get_authenticated_service(RW_SCOPE)
+
+    print 'Building copy request...'
+    # request = service.objects().insert(bucket=bucket_name, name=object_name,
+    #                                    media_body=media)
+
+    object__body = {
+    }
+
+    request = service.objects()\
+        .rewrite(sourceBucket=sourceBucket, sourceObject=sourceObject,
+                 destinationBucket=destinationBucket, destinationObject=destinationObject,
+                 body=object__body)
+
+    print 'Copy from bucket: %s to bucket: %s' % (sourceObject, destinationObject)
+
+    response = None
+    error = None
+    try:
+        response = request.execute()
+    except HttpError, err:
+        error = err
+        if err.resp.status < 500:
+            raise
+    except RETRYABLE_ERRORS, err:
+        error = err
+
+    if error:
+        print '\nCopy error:%s' % error
+        return
+
+    print '\nCopy complete!'
+
+    print 'Response Object:'
+    print json_dumps(response, indent=2)
+
+
 def download(argv):
     bucket_name, object_name = argv[1][5:].split('/', 1)
     filename = argv[2]
@@ -216,6 +259,9 @@ if __name__ == '__main__':
         print USAGE
         sys.exit(9)
 
+    if sys.argv[2].startswith('gs://') and sys.argv[1].startswith('gs://'):
+        copy(sys.argv)
+        sys.exit(0)
     if sys.argv[2].startswith('gs://'):
         upload(sys.argv)
         sys.exit(0)

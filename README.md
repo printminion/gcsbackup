@@ -16,7 +16,7 @@ and copy it to client_secrets.json file
     python gcsbackup.py ~/pics/20160723-142358.jpg gs://<bucket_id>/data/2016/07/23/20160723-142358.jpg
 
 #copy
-    copy gs://<bucket_id>/data/2016/07/25/20160725-000025.jpg gs://<bucket_id>/last.jpg
+    python gcsbackup.py gs://<bucket_id>/data/2016/07/25/20160725-000025.jpg gs://<bucket_id>/last.jpg
 
 equivalent to
     

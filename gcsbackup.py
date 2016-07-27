@@ -50,6 +50,7 @@ Usage examples:
 
 RW_SCOPE = 'https://www.googleapis.com/auth/devstorage.read_write'
 RO_SCOPE = 'https://www.googleapis.com/auth/devstorage.read_only'
+FC_SCOPE = 'https://www.googleapis.com/auth/devstorage.full_control'
 
 # Helpful message to display if the CLIENT_SECRETS_FILE is missing.
 MISSING_CLIENT_SECRETS_MESSAGE = """
@@ -128,7 +129,7 @@ def upload(argv):
     bucket_name, object_name = argv[2][5:].split('/', 1)
     assert bucket_name and object_name
 
-    service = get_authenticated_service(RW_SCOPE)
+    service = get_authenticated_service(FC_SCOPE) #RW_SCOPE)
 
     print 'Building upload request...'
     media = MediaFileUpload(filename, chunksize=CHUNKSIZE, resumable=True)
@@ -170,19 +171,22 @@ def upload(argv):
 def copy(argv):
     sourceBucket, sourceObject = argv[1][5:].split('/', 1)
     destinationBucket, destinationObject = argv[2][5:].split('/', 1)
+
+    updateACL = None
+    if len(argv) > 3:
+        updateACL = argv[3]
+
     assert sourceBucket and sourceObject
     assert destinationBucket and destinationObject
 
-    service = get_authenticated_service(RW_SCOPE)
+    service = get_authenticated_service(FC_SCOPE) #RW_SCOPE)
 
     print 'Building copy request...'
-    # request = service.objects().insert(bucket=bucket_name, name=object_name,
-    #                                    media_body=media)
 
     object__body = {
     }
 
-    request = service.objects()\
+    request = service.objects() \
         .rewrite(sourceBucket=sourceBucket, sourceObject=sourceObject,
                  destinationBucket=destinationBucket, destinationObject=destinationObject,
                  body=object__body)
@@ -205,6 +209,45 @@ def copy(argv):
         return
 
     print '\nCopy complete!'
+
+    print 'Response Object:'
+    print json_dumps(response, indent=2)
+
+    if updateACL == 'READER.allUser':
+        makePublic(argv)
+
+
+def makePublic(argv):
+    sourceBucket, sourceObject = argv[2][5:].split('/', 1)
+    assert sourceBucket and sourceObject
+
+    service = get_authenticated_service(FC_SCOPE)
+
+    print 'Building ACL update request...'
+
+    object__body = {
+    }
+
+    request = service.objects().update(bucket=sourceBucket, object=sourceObject, predefinedAcl="publicRead", body=object__body)
+
+    print 'Make bucket: %s object: %s public' % (sourceBucket, sourceObject)
+
+    response = None
+    error = None
+    try:
+        response = request.execute()
+    except HttpError, err:
+        error = err
+        if err.resp.status < 500:
+            raise
+    except RETRYABLE_ERRORS, err:
+        error = err
+
+    if error:
+        print '\nupdate ACL error:%s' % error
+        return
+
+    print '\nACL update complete!'
 
     print 'Response Object:'
     print json_dumps(response, indent=2)

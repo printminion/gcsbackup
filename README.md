@@ -21,3 +21,5 @@ and copy it to client_secrets.json file
 equivalent to
     
     gsutil cp -p gs://<bucket_id>/data/2016/07/25/20160725-000025.jpg gs://<bucket_id>/last.jpg
+    
+    gsutil acl ch -u AllUsers:R gs://<bucket_id>/last.jpg

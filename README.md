@@ -13,10 +13,10 @@ and copy it to client_secrets.json file
 
 
 #upload
-    python gcsbackup.py ~/pics/20160723-142358.jpg gs://<bucket_id>/data/2016/07/23/20160723-142358.jpg
-
-#copy
-    python gcsbackup.py gs://<bucket_id>/data/2016/07/25/20160725-000025.jpg gs://<bucket_id>/last.jpg
+    python gcsbackup.py upload ~/pics/20160723-142358.jpg gs://<bucket_id>/data/2016/07/23/20160723-142358.jpg
+    python gcsbackup.py copy gs://<bucket_id>/data/2016/07/25/20160725-000025.jpg gs://<bucket_id>/last.jpg
+    python gcsbackup.py download gs://bucket/object ~/Desktop/filename
+    python gcsbackup.py predefinedAcl publicRead gs://bucket/object
 
 equivalent to
     

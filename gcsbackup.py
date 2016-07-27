@@ -43,8 +43,10 @@ CREDENTIALS_FILE = 'credentials.json'
 # Message describing how to use the script.
 USAGE = """
 Usage examples:
-  $ python chunked_transfer.py gs://bucket/object ~/Desktop/filename
-  $ python chunked_transfer.py ~/Desktop/filename gs://bucket/object
+  $ python gcsbackup.py upload ~/Desktop/filename gs://bucket/object
+  $ python gcsbackup.py download gs://bucket/object ~/Desktop/filename
+  $ python gcsbackup.py copy gs://bucket/objectSource gs://bucket/objectTarget
+  $ python gcsbackup.py predefinedAcl publicRead gs://bucket/object
 
 """
 
@@ -125,8 +127,8 @@ def print_with_carriage_return(s):
 
 
 def upload(argv):
-    filename = argv[1]
-    bucket_name, object_name = argv[2][5:].split('/', 1)
+    filename = argv[2]
+    bucket_name, object_name = argv[3][5:].split('/', 1)
     assert bucket_name and object_name
 
     service = get_authenticated_service(FC_SCOPE) #RW_SCOPE)
@@ -169,12 +171,8 @@ def upload(argv):
 
 
 def copy(argv):
-    sourceBucket, sourceObject = argv[1][5:].split('/', 1)
-    destinationBucket, destinationObject = argv[2][5:].split('/', 1)
-
-    updateACL = None
-    if len(argv) > 3:
-        updateACL = argv[3]
+    sourceBucket, sourceObject = argv[2][5:].split('/', 1)
+    destinationBucket, destinationObject = argv[3][5:].split('/', 1)
 
     assert sourceBucket and sourceObject
     assert destinationBucket and destinationObject
@@ -213,12 +211,9 @@ def copy(argv):
     print 'Response Object:'
     print json_dumps(response, indent=2)
 
-    if updateACL == 'READER.allUser':
-        makePublic(argv)
-
 
 def makePublic(argv):
-    sourceBucket, sourceObject = argv[2][5:].split('/', 1)
+    sourceBucket, sourceObject = argv[3][5:].split('/', 1)
     assert sourceBucket and sourceObject
 
     service = get_authenticated_service(FC_SCOPE)
@@ -254,8 +249,8 @@ def makePublic(argv):
 
 
 def download(argv):
-    bucket_name, object_name = argv[1][5:].split('/', 1)
-    filename = argv[2]
+    bucket_name, object_name = argv[2][5:].split('/', 1)
+    filename = argv[3]
     assert bucket_name and object_name
 
     service = get_authenticated_service(RO_SCOPE)
@@ -302,15 +297,23 @@ if __name__ == '__main__':
         print USAGE
         sys.exit(9)
 
-    if sys.argv[2].startswith('gs://') and sys.argv[1].startswith('gs://'):
+    action = sys.argv[1]
+
+    if action == 'predefinedAcl' and sys.argv[3].startswith('gs://'):
+        makePublic(sys.argv)
+        sys.exit(0)
+
+    if action == 'copy' and sys.argv[2].startswith('gs://') and sys.argv[3].startswith('gs://'):
         copy(sys.argv)
         sys.exit(0)
-    if sys.argv[2].startswith('gs://'):
+
+    if action == 'upload' and sys.argv[3].startswith('gs://'):
         upload(sys.argv)
         sys.exit(0)
-    elif sys.argv[1].startswith('gs://'):
+
+    if action == 'download' and sys.argv[2].startswith('gs://'):
         download(sys.argv)
         sys.exit(0)
-    else:
-        print USAGE
-        sys.exit(9)
+
+    print USAGE
+    sys.exit(9)

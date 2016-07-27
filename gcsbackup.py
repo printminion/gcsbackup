@@ -213,19 +213,25 @@ def copy(argv):
 
 
 def makePublic(argv):
+    predefinedAcl = argv[2]
     sourceBucket, sourceObject = argv[3][5:].split('/', 1)
     assert sourceBucket and sourceObject
+
+    if predefinedAcl not in ['private', 'bucketOwnerRead', 'bucketOwnerFullControl', 'projectPrivate', 'authenticatedRead', 'publicRead', 'publicReadWrite']:
+        raise Exception('Unknown predefinedAcl:%s' % predefinedAcl)
 
     service = get_authenticated_service(FC_SCOPE)
 
     print 'Building ACL update request...'
 
     object__body = {
+        "role": "READER",
+        "entity": "allUsers"
     }
 
-    request = service.objects().update(bucket=sourceBucket, object=sourceObject, predefinedAcl="publicRead", body=object__body)
+    request = service.objectAccessControls().insert(bucket=sourceBucket, object=sourceObject, body=object__body)
 
-    print 'Make bucket: %s object: %s public' % (sourceBucket, sourceObject)
+    print 'Make bucket: %s object: %s %s' % (sourceBucket, sourceObject, predefinedAcl)
 
     response = None
     error = None
